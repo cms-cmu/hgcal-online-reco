@@ -1,0 +1,17 @@
+name: hgcal-latent
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pip:
+    # Data loading/analysis (both scripts):
+    - uproot
+    - awkward
+    # Only needed for encoding (encode_wafers.py):
+    - tensorflow>=2.10
+    - tf-keras
+    - qkeras
+    - pyparsing
