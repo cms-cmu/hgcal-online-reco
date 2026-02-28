@@ -1,8 +1,7 @@
 data/
 encoders/
-*.logdata/
-encoders/
 *.log
 *.png
 *.md
 *.pdf
+# please work.
