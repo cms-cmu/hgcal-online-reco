@@ -138,40 +138,89 @@ def plot_latent(npz_file):
     try:
         data = np.load(npz_file)
         latent = data['latent'] # Shape: (N_wafers, 16)
-        
-        # 1. Distribution of all latent values
-        plt.figure(figsize=(10, 6))
-        plt.hist(latent.flatten(), bins=100, log=True)
-        plt.xlabel('Latent Value')
-        plt.ylabel('Count (Log Scale)')
-        plt.title('Distribution of Latent Space Values')
-        plt.savefig('plot_latent_dist.png')
-        print("Saved plot_latent_dist.png")
-        plt.close()
-        
-        # 2. L1 Latent Space Images (Grid of 4x4)
-        num_images = 16  # Plot the first 16 latent vectors as 4x4 images
-        fig, axes = plt.subplots(4, 4, figsize=(12, 12))
-        fig.suptitle('L1 Latent Space (4x4 representations of first 16 wafers)', fontsize=16)
-        
-        for i, ax in enumerate(axes.flatten()):
-            if i < len(latent):
-                if latent[i].size == 16:
-                    img = latent[i].reshape(4, 4)
-                    ax.imshow(img, cmap='viridis', aspect='auto')
-                    ax.set_title(f'Wafer {i}')
-                else:
-                    ax.text(0.5, 0.5, 'Invalid shape', ha='center', va='center')
-            ax.axis('off')
-        
+
+        # Compute sparsity statistics
+        nonzero_mask = np.any(latent != 0, axis=1)
+        n_nonzero_wafers = np.sum(nonzero_mask)
+        print(f"  Latent stats: {n_nonzero_wafers}/{len(latent)} wafers have non-zero values "
+              f"({100*n_nonzero_wafers/len(latent):.2f}%)")
+        print(f"  Value range: [{latent.min():.4f}, {latent.max():.4f}]")
+
+        # 1. Distribution of NON-ZERO latent values (exclude the dominant zero peak)
+        nonzero_vals = latent.flatten()
+        nonzero_vals = nonzero_vals[nonzero_vals != 0]
+        fig, ax = plt.subplots(1, 2, figsize=(18, 6))
+
+        ax[0].hist(latent.flatten(), bins=100, log=True, color='steelblue', alpha=0.8)
+        ax[0].set_xlabel('Latent Value')
+        ax[0].set_ylabel('Count (Log Scale)')
+        ax[0].set_title('All Latent Values (incl. zeros)')
+        ax[0].axvline(0, color='red', linestyle='--', alpha=0.5)
+        hep.cms.label(ax=ax[0], data=False, label="Simulation", rlabel="")
+
+        if len(nonzero_vals) > 0:
+            ax[1].hist(nonzero_vals, bins=80, log=True, color='darkorange', alpha=0.8)
+            ax[1].set_xlabel('Latent Value')
+            ax[1].set_ylabel('Count (Log Scale)')
+            ax[1].set_title(f'Non-Zero Latent Values (N={len(nonzero_vals):,})')
+            hep.cms.label(ax=ax[1], data=False, label="Simulation", rlabel="")
+        else:
+            ax[1].text(0.5, 0.5, 'All values are zero', ha='center', va='center',
+                       fontsize=16, transform=ax[1].transAxes)
+
         plt.tight_layout()
-        plt.savefig('plot_latent_images.png')
-        print("Saved plot_latent_images.png")
+        plt.savefig('plot_latent_dist.png', dpi=150)
+        print("  Saved plot_latent_dist.png")
+        plt.close()
+
+        # 2. L1 Latent Space Images — select 16 wafers with HIGHEST activity
+        l1_norms = np.sum(np.abs(latent), axis=1)
+        top_indices = np.argsort(l1_norms)[-16:][::-1]  # Top 16 by L1 norm
+
+        fig, axes = plt.subplots(4, 4, figsize=(14, 14))
+        fig.suptitle('L1 Latent Space (top 16 most active wafers, 4x4)', fontsize=16, y=1.01)
+
+        vmax = np.max(np.abs(latent[top_indices])) if len(top_indices) > 0 else 1
+        for i, ax in enumerate(axes.flatten()):
+            if i < len(top_indices):
+                idx = top_indices[i]
+                img = latent[idx].reshape(4, 4)
+                im = ax.imshow(img, cmap='RdBu_r', aspect='auto', vmin=-vmax, vmax=vmax)
+                ax.set_title(f'Wafer {idx}\n(L1={l1_norms[idx]:.2f})', fontsize=10)
+            ax.axis('off')
+
+        fig.colorbar(im, ax=axes, shrink=0.6, label='Latent Value')
+        plt.tight_layout()
+        plt.savefig('plot_latent_images.png', dpi=150)
+        print("  Saved plot_latent_images.png")
         sys.stdout.flush()
         plt.close()
 
+        # 3. Latent heatmap — show activation pattern across a sample of non-zero wafers
+        if n_nonzero_wafers > 0:
+            nonzero_indices = np.where(nonzero_mask)[0]
+            sample_size = min(200, len(nonzero_indices))
+            sample_idx = np.sort(np.random.choice(nonzero_indices, sample_size, replace=False))
+            sample_latent = latent[sample_idx]
+
+            plt.figure(figsize=(12, 8))
+            vabs = np.max(np.abs(sample_latent))
+            plt.imshow(sample_latent.T, cmap='RdBu_r', aspect='auto', vmin=-vabs, vmax=vabs)
+            plt.colorbar(label='Latent Value')
+            plt.xlabel(f'Wafer Index (sampled {sample_size} non-zero wafers)')
+            plt.ylabel('Latent Dimension')
+            plt.title(f'Latent Activations Heatmap ({n_nonzero_wafers:,} non-zero wafers / {len(latent):,} total)')
+            plt.yticks(range(16), [f'Dim {i}' for i in range(16)])
+            hep.cms.label(data=False, label="Simulation", rlabel="")
+            plt.tight_layout()
+            plt.savefig('plot_latent_heatmap.png', dpi=150)
+            print("  Saved plot_latent_heatmap.png")
+            plt.close()
+
     except Exception as e:
         print(f"Error creating Latent Space plot: {e}")
+        import traceback
+        traceback.print_exc()
 
 def main():
     start_msg = "Starting data plotting..."
