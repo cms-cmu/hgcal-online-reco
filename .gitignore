@@ -2,4 +2,5 @@ data/
 encoders/
 *.log
 *.png
+*.md
 *.pdf
