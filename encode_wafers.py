@@ -202,7 +202,7 @@ def load_root_file(file_path, selected_eLinks=-1):
             file_indices = []
             for event_idx, n_wafers in enumerate(wafers_per_event):
                 event_indices.extend([global_event_counter + event_idx] * n_wafers)
-                file_indices.extend([file_index] * n_wafers)
+                file_indices.extend([0] * n_wafers)
 
             event_indices = np.array(event_indices)
             file_indices = np.array(file_indices)
@@ -213,7 +213,7 @@ def load_root_file(file_path, selected_eLinks=-1):
             wafer_v = ak.to_numpy(ak.flatten(data["L1THGCAL_wafer_waferv"])) / 12
             wafer_u = ak.to_numpy(ak.flatten(data["L1THGCAL_wafer_waferu"])) / 12
             wafer_type = ak.to_numpy(ak.flatten(data["L1THGCAL_wafer_wafertype"])).astype(int)
-            one_hot_wafertype = np.eye(np.max(wafer_type) + 1)[wafer_type]
+            one_hot_wafertype = np.eye(3)[wafer_type]  # 3 wafer types (0,1,2); hardcoded to match model condition_shape=(8,)
 
             sum_CALQ = np.sum([ak.to_numpy(ak.flatten(data[f"L1THGCAL_wafer_CALQ_{j}"])) for j in range(64)], axis=0)
             sum_CALQ = np.log(sum_CALQ + 1)
@@ -257,7 +257,7 @@ def load_root_file(file_path, selected_eLinks=-1):
         print(f"    ERROR: {e}")
         import traceback
         traceback.print_exc()
-        continue
+        raise
 
     if not all_inputs:
         raise ValueError("No data loaded from any files!")
@@ -272,7 +272,7 @@ def load_root_file(file_path, selected_eLinks=-1):
     print(f"SUMMARY:")
     print(f"  Total wafers loaded: {len(inputs_final):,}")
     print(f"  Total events: {global_event_counter:,}")
-    print(f"  Total files: {len(files)}")
+    print(f"  Total files: 1")
     print(f"  Avg wafers per event: {len(inputs_final) / global_event_counter:.1f}")
     print(f"{'='*70}\n")
 
