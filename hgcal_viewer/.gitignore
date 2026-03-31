@@ -1,0 +1,23 @@
+# Python build artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor swap / backup files
+*.swp
+*.swo
+*~
+.*.swp
+
+# Generated geometry files (created by `hgcal-viewer prepare`)
+wafer_mapping.csv
+wafer_mapping_meta.json
