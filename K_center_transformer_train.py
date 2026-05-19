@@ -746,11 +746,17 @@ def train_model(
             avg_interval_cos_loss = interval_cos_loss / interval_events
             
             # Store interval data for plotting
+            avg_interval_cov_mae = interval_cov_mae_loss / interval_events
+            avg_interval_cov_cos = interval_cov_cos_loss / interval_events
             interval_event_counts.append(total_events_processed)
             interval_train_mae_losses.append(avg_interval_mae_loss)
-            interval_val_mae_losses.append(avg_interval_mae_loss)  # For consistency, use train values for leftover
+            interval_val_mae_losses.append(avg_interval_mae_loss)
             interval_train_cos_losses.append(avg_interval_cos_loss)
-            interval_val_cos_losses.append(avg_interval_cos_loss)  # For consistency, use train values for leftover
+            interval_val_cos_losses.append(avg_interval_cos_loss)
+            interval_train_cov_mae_losses.append(avg_interval_cov_mae)
+            interval_val_cov_mae_losses.append(avg_interval_cov_mae)
+            interval_train_cov_cos_losses.append(avg_interval_cov_cos)
+            interval_val_cov_cos_losses.append(avg_interval_cov_cos)
         
         steps = len(train_loader)
         train_metrics = {
