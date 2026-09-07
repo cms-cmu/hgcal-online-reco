@@ -4,3 +4,8 @@ encoders/
 *.png
 *.md
 *.pdf
+logs/
+*.pth
+checkpoint/
+checkpoints/
+__pycache__/
