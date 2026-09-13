@@ -2,9 +2,9 @@
 
 #SBATCH --job-name=download_data
 #SBATCH --output=download_%j.log
-#SBATCH --time=24:00:00
+#SBATCH --time=4:00:00
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=leoyao@andrew.cmu.edu
+#SBATCH --mail-user=dylankan@andrew.cmu.edu
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=4G
 
