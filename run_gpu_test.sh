@@ -28,8 +28,8 @@ conda run -n detector_env python -u "$SCRIPT_DIR/K_center_transformer_train.py" 
     --root_data_dir "$SCRIPT_DIR/data" \
     --epochs 15 \
     --batch_size 16 \
-    --root_max_wafers 600 \
-    --root_max_k 10 \
+    --root_max_wafers 10000 \
+    --root_max_k 150 \
     --final_test_size 5000 \
     2>&1 | tee "$LOG_DIR/kcenter_$(date +%Y%m%d_%H%M%S).log"
 
