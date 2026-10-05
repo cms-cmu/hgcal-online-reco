@@ -3,9 +3,9 @@
 #SBATCH --qos=cpu_light
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=dylankan@andrew.cmu.edu
-#SBATCH --chdir=/home/export/dylankan/hgcal_online_reco
+#SBATCH --chdir=/home/export/dylankan/hgcal_online_reco/Find_K_Script
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=32
 #SBATCH --mem-per-cpu=4
 #SBATCH --time=4:00:00
 #SBATCH --output=Find_K_Script/logs/slurm_%j.log
