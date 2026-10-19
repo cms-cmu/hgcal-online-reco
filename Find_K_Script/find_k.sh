@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem-per-cpu=4
 #SBATCH --time=4:00:00
-#SBATCH --output=Find_K_Script/logs/slurm_%j.log
+#SBATCH --output=logs/slurm_%j.log
 
 set -euo pipefail
 source "$HOME/miniconda3/etc/profile.d/conda.sh"

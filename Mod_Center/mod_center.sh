@@ -24,7 +24,7 @@ conda run -n detector_env python -u "$SCRIPT_DIR/K_center_transformer_train.py" 
     --device cuda:0 \
     --root_data_dir "$HOME_DIR/data" \
     --epochs 100 \
-    --batch_size 16 \
+    --batch_size 2 \
     --root_max_wafers 3500 \
     --root_max_k 150 \
     --final_test_size 5000 

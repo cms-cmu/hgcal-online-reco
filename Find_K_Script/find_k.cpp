@@ -27,9 +27,8 @@ void find_k() {
     // Create a 1D histogram of wafers
     auto hWafers = dfCounts.Histo1D({"hWafers", "Wafers Per Event;Number of Wafers;Events", 100, 0, maxK.GetValue()}, "wafer_count");
 
-    gStyle->SetOptStat(1110);
+    gStyle->SetOptStat("emr");
     TCanvas c("c1", "Wafers");
-    c.SetLogy();
     hWafers->SetLineWidth(2);
     hWafers->DrawClone();
     c.SaveAs("wafer_count_hist.png");
