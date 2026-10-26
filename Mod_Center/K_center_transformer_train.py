@@ -343,6 +343,14 @@ def _stratified_split_indices_by_k(k_values: np.ndarray, train_ratio: float = 0.
 
     return train_idx, val_idx, test_idx
 
+def atomic_save(obj, path):
+    tmpPath = path + ".tmp"
+    with open(tmpPath, 'wb') as f:
+        torch.save(obj, f)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmpPath, path)
+
 def train_model(
     model,
     dataset,
@@ -471,7 +479,7 @@ def train_model(
     logs = []
     
     # Resume from checkpoint if specified
-    start_epoch = 11
+    start_epoch = 0
     if resume_from is not None and os.path.exists(resume_from):
         print(f"Loading checkpoint from {resume_from}")
         checkpoint = torch.load(resume_from, map_location=device)
@@ -607,11 +615,6 @@ def train_model(
             act_pred = (torch.sigmoid(activity_logits).squeeze(-1) >= 0.5).float()
             batch_act_acc = (act_pred == active_flags).float().mean().item()
             total_act_acc += batch_act_acc
-            # Activity interval/global aggregates
-            total_act_bce += activity_bce.item()
-            act_pred = (torch.sigmoid(activity_logits).squeeze(-1) >= 0.5).float()
-            batch_act_acc = (act_pred == active_flags).float().mean().item()
-            total_act_acc += batch_act_acc
             
             # Track interval losses
             interval_loss += loss.item() * inputs.size(0)
@@ -621,8 +624,6 @@ def train_model(
             batch_cov_cos = torch.stack(per_sample_cov_cos).mean().item()
             interval_cov_mae_loss += batch_cov_mae * inputs.size(0)
             interval_cov_cos_loss += batch_cov_cos * inputs.size(0)
-            interval_act_bce_loss += activity_bce.item() * inputs.size(0)
-            interval_act_acc += batch_act_acc * inputs.size(0)
             interval_act_bce_loss += activity_bce.item() * inputs.size(0)
             interval_act_acc += batch_act_acc * inputs.size(0)
             event_counter += inputs.size(0)
@@ -787,28 +788,23 @@ def train_model(
         df.plot(figsize=(10, 6), title="Training and Validation Metrics")
         plt.grid(True)
         plt.savefig("training_metrics_with_val.png")
+
+        # Save model weights + latest model (atomic saving)
+        ckpt = {
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict() if scheduler is not None else None,
+            'train_metrics': train_metrics,
+            'val_metrics': val_metrics,
+            'logs': logs
+        }
         
         # Save model weights after each epoch
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict() if scheduler is not None else None,
-            'train_metrics': train_metrics,
-            'val_metrics': val_metrics,
-            'logs': logs
-        }, f'checkpoint/model_epoch_{epoch:03d}.pth')
+        atomic_save(ckpt, f'checkpoint/model_epoch_{epoch:03d}.pth')
         
         # Also save the latest model
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict() if scheduler is not None else None,
-            'train_metrics': train_metrics,
-            'val_metrics': val_metrics,
-            'logs': logs
-        }, 'checkpoint/model_latest.pth')
+        atomic_save(ckpt, 'checkpoint/model_latest.pth')
 
     # Final test evaluation
     test_metrics = evaluate_model(model, test_loader, device, criterion)
@@ -1823,7 +1819,7 @@ if __name__ == "__main__":
         # Determine max_k across all training datasets
         max_k = int(max(ds.cluster_summary_labels.shape[1] for ds in train_datasets))
 
-        config = GPTConfig(block_size=3333, n_layer=6, n_head=8, n_embd=256, dropout=0.1)
+        config = GPTConfig(block_size=3333, n_layer=6, n_head=4, n_embd=64, dropout=0.1)
         model = SetTransformer(config, input_dim=8, k=max_k)
 
         # Optional: resume weights in dynamic mode from a given epoch (weights-only)
@@ -1889,7 +1885,7 @@ if __name__ == "__main__":
         print(f"Dataset: {len(dataset)} events, max_wafers={args.root_max_wafers}, max_k={max_k}")
         _print_k_distribution(dataset.k_values)
 
-        config = GPTConfig(block_size=3333, n_layer=6, n_head=8, n_embd=256, dropout=0.1)
+        config = GPTConfig(block_size=3333, n_layer=6, n_head=4, n_embd=64, dropout=0.1)
         model = SetTransformer(config, input_dim=8, k=max_k)
         if args.resume_epoch is not None and (args.resume_from is None or args.resume_from == ''):
             auto_resume_path = os.path.join('checkpoint', f'model_epoch_{args.resume_epoch:03d}.pth')

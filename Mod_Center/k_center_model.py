@@ -41,6 +41,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.head_dim = config.n_embd // config.n_head
         self.qkv_proj = nn.Linear(config.n_embd, 3 * config.n_embd)
         self.out_proj = nn.Linear(config.n_embd, config.n_embd)
+        self.attn_dropout_p = config.dropout 
         self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, x):
@@ -51,10 +52,24 @@ class MultiHeadSelfAttention(nn.Module):
         k = k.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
         v = v.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
 
+        '''
+        OLD ATTENTION:
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) / (self.head_dim ** 0.5)
         attn_weights = F.softmax(attn_scores, dim=-1)
         attn_weights = self.dropout(attn_weights)
         attn_output = torch.matmul(attn_weights, v)
+        '''
+
+        # New Attention (Flash Attention):
+        use_cuda = x.is_cuda
+        with torch.autocast(device_type = "cuda", dtype = torch.bfloat16, enabled = use_cuda):
+            attn_output = F.scaled_dot_product_attention(
+                q, k, v, 
+                attn_mask = None,
+                dropout_p = self.attn_dropout_p if self.training else 0.0,
+                is_causal = False
+            )
+        attn_output = attn_output.to(x.dtype)
 
         attn_output = attn_output.transpose(1, 2).contiguous().view(B, T, C)
         out = self.out_proj(attn_output)
@@ -119,7 +134,7 @@ class SetTransformer(nn.Module):
         # Cross-attention between k queries and encoded nodes
         self.cross_attention = nn.MultiheadAttention(
             embed_dim=config.n_embd,
-            num_heads=8,
+            num_heads=config.n_head,
             dropout=config.dropout,
             batch_first=True,
         )
@@ -182,10 +197,11 @@ class SetTransformer(nn.Module):
         k_queries = self.k_queries.expand(batch_size, -1, -1)  # (B,k,C)
 
         # Cross-attention: k queries attend to all encoded nodes
-        attended_centers, attention_weights = self.cross_attention(
+        attended_centers, _ = self.cross_attention(
             query=k_queries,    # (B,k,C) - k queries
             key=h,              # (B,T,C) - encoded nodes
             value=h,            # (B,T,C) - encoded nodes
+            need_weights = False
         )  # (B,k,C)
 
         # Generate coordinates for each center
